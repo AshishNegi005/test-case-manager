@@ -118,4 +118,35 @@ const getDefectDensity = async (req, res) => {
   }
 };
 
-module.exports = { getSummary, getTrends, getTesterProgress, getDefectDensity };
+const getSuiteReport = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const cacheKey = `analytics:${projectId}:suites`;
+    const cached = await cache.get(cacheKey);
+    if (cached) return res.json({ data: cached, fromCache: true });
+
+    const result = await db.query(`
+      SELECT ts.id, ts.name,
+             COUNT(te.id) as total_runs,
+             COUNT(te.id) FILTER (WHERE te.status = 'pass') as passed,
+             COUNT(te.id) FILTER (WHERE te.status = 'fail') as failed,
+             COUNT(te.id) FILTER (WHERE te.status = 'blocked') as blocked,
+             COUNT(te.id) FILTER (WHERE te.status = 'skipped') as skipped,
+             MAX(te.executed_at) as last_run_at,
+             ROUND(100.0 * COUNT(te.id) FILTER (WHERE te.status = 'pass') / NULLIF(COUNT(te.id), 0), 1) as pass_rate
+      FROM test_suites ts
+      LEFT JOIN test_executions te ON te.suite_id = ts.id AND te.project_id = $1
+      WHERE ts.project_id = $1
+      GROUP BY ts.id, ts.name
+      ORDER BY last_run_at DESC NULLS LAST, ts.name ASC
+    `, [projectId]);
+
+    await cache.set(cacheKey, result.rows, CACHE_TTL);
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { getSummary, getTrends, getTesterProgress, getDefectDensity, getSuiteReport };

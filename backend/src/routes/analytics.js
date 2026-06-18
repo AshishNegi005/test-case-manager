@@ -9,5 +9,6 @@ router.get('/summary', ctrl.getSummary);
 router.get('/trends', ctrl.getTrends);
 router.get('/testers', ctrl.getTesterProgress);
 router.get('/defects', ctrl.getDefectDensity);
+router.get('/suites', ctrl.getSuiteReport);
 
 module.exports = router;

@@ -17,6 +17,7 @@ const Analytics = () => {
   const [trends, setTrends] = useState([]);
   const [testers, setTesters] = useState([]);
   const [defects, setDefects] = useState([]);
+  const [suiteReport, setSuiteReport] = useState([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [cacheInfo, setCacheInfo] = useState({});
@@ -28,11 +29,13 @@ const Analytics = () => {
       api.get(`/projects/${projectId}/analytics/trends?days=${days}`),
       api.get(`/projects/${projectId}/analytics/testers`),
       api.get(`/projects/${projectId}/analytics/defects`),
-    ]).then(([s, t, te, d]) => {
+      api.get(`/projects/${projectId}/analytics/suites`),
+    ]).then(([s, t, te, d, sr]) => {
       setSummary(s.data);
       setTrends(t.data.data || []);
       setTesters(te.data.data || []);
       setDefects(d.data.data || []);
+      setSuiteReport(sr.data.data || []);
       setCacheInfo({
         summary: s.data.fromCache,
         trends: t.data.fromCache,
@@ -167,6 +170,53 @@ const Analytics = () => {
             </LineChart>
           </ResponsiveContainer>
         ) : <div className="empty-state"><p>No trend data for this period</p></div>}
+      </div>
+
+      {/* Suite-level Report */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Suite Execution Report</h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Suite</th>
+              <th>Total Runs</th>
+              <th>Passed</th>
+              <th>Failed</th>
+              <th>Blocked</th>
+              <th>Skipped</th>
+              <th>Pass Rate</th>
+              <th>Last Run</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suiteReport.length === 0 ? (
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No suites found</td></tr>
+            ) : suiteReport.map(s => {
+              const rate = parseFloat(s.pass_rate) || 0;
+              return (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 500 }}>{s.name}</td>
+                  <td>{s.total_runs}</td>
+                  <td style={{ color: 'var(--success)', fontWeight: 600 }}>{s.passed}</td>
+                  <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{s.failed}</td>
+                  <td style={{ color: 'var(--warning)' }}>{s.blocked}</td>
+                  <td style={{ color: 'var(--info)' }}>{s.skipped}</td>
+                  <td>
+                    {parseInt(s.total_runs) === 0
+                      ? <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Not run</span>
+                      : <span style={{ fontWeight: 600, color: rate >= 80 ? 'var(--success)' : rate >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
+                          {rate}%
+                        </span>
+                    }
+                  </td>
+                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {s.last_run_at ? new Date(s.last_run_at).toLocaleString() : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="grid grid-2">

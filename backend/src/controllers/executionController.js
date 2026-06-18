@@ -4,7 +4,7 @@ const { cache } = require('../config/redis');
 const getExecutions = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { page = 1, limit = 20, status, testCaseId } = req.query;
+    const { page = 1, limit = 20, status, testCaseId, suiteId } = req.query;
 
     let where = ['te.project_id = $1'];
     let params = [projectId];
@@ -12,16 +12,19 @@ const getExecutions = async (req, res) => {
 
     if (status) { where.push(`te.status = $${idx++}`); params.push(status); }
     if (testCaseId) { where.push(`te.test_case_id = $${idx++}`); params.push(testCaseId); }
+    if (suiteId) { where.push(`te.suite_id = $${idx++}`); params.push(suiteId); }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const countRes = await db.query(`SELECT COUNT(*) FROM test_executions te WHERE ${where.join(' AND ')}`, params);
     const total = parseInt(countRes.rows[0].count);
 
     const result = await db.query(`
-      SELECT te.*, tc.title as test_case_title, u.username as executed_by_name
+      SELECT te.*, tc.title as test_case_title, u.username as executed_by_name,
+             ts.name as suite_name
       FROM test_executions te
       JOIN test_cases tc ON te.test_case_id = tc.id
       LEFT JOIN users u ON te.executed_by = u.id
+      LEFT JOIN test_suites ts ON te.suite_id = ts.id
       WHERE ${where.join(' AND ')}
       ORDER BY te.executed_at DESC
       LIMIT $${idx} OFFSET $${idx + 1}

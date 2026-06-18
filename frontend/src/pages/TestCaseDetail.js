@@ -154,13 +154,23 @@ const VersionHistory = ({ projectId, caseId, onRestore }) => {
   );
 };
 
+const STATUS_LABELS = {
+  pass:    { icon: '✅', label: 'Pass',    commentLabel: 'Pass Reason',    placeholder: 'What was verified? What passed?' },
+  fail:    { icon: '❌', label: 'Fail',    commentLabel: 'Failure Reason', placeholder: 'What went wrong? Steps to reproduce?' },
+  blocked: { icon: '🚫', label: 'Blocked', commentLabel: 'Blocked Reason', placeholder: 'What is blocking execution?' },
+  skipped: { icon: '⏭', label: 'Skipped', commentLabel: 'Skip Reason',    placeholder: 'Why was this test skipped?' },
+};
+
 const ExecuteModal = ({ testCase, projectId, onClose, onSave }) => {
   const [form, setForm] = useState({ status: 'pass', comments: '', defectId: '', defectDescription: '' });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.comments.trim()) { setError('Please enter a reason/comment before recording the result.'); return; }
     setLoading(true);
+    setError('');
     try {
       await api.post(`/projects/${projectId}/executions`, { testCaseId: testCase.id, ...form });
       onSave();
@@ -168,6 +178,8 @@ const ExecuteModal = ({ testCase, projectId, onClose, onSave }) => {
       setLoading(false);
     }
   };
+
+  const meta = STATUS_LABELS[form.status];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -177,42 +189,134 @@ const ExecuteModal = ({ testCase, projectId, onClose, onSave }) => {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
         <div className="modal-body">
+          {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Result *</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {['pass', 'fail', 'blocked', 'skipped'].map(s => (
+                {Object.entries(STATUS_LABELS).map(([s, m]) => (
                   <button key={s} type="button"
                     className={`btn ${form.status === s ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setForm(f => ({ ...f, status: s }))}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                    onClick={() => { setForm(f => ({ ...f, status: s })); setError(''); }}>
+                    {m.icon} {m.label}
                   </button>
                 ))}
               </div>
             </div>
+
             <div className="form-group">
-              <label>Comments</label>
-              <textarea className="form-control" value={form.comments} onChange={e => setForm(f => ({ ...f, comments: e.target.value }))} placeholder="Notes about this execution..." />
+              <label>{meta.commentLabel} *</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={form.comments}
+                onChange={e => setForm(f => ({ ...f, comments: e.target.value }))}
+                placeholder={meta.placeholder}
+                style={{ borderColor: error && !form.comments.trim() ? 'var(--danger)' : undefined }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                Required — this will appear in the execution history so the team knows why it {form.status}ed.
+              </div>
             </div>
-            {form.status === 'fail' && (
+
+            {(form.status === 'fail' || form.status === 'blocked') && (
               <>
                 <div className="form-group">
-                  <label>Defect ID</label>
-                  <input className="form-control" value={form.defectId} onChange={e => setForm(f => ({ ...f, defectId: e.target.value }))} placeholder="BUG-123" />
+                  <label>Defect ID {form.status === 'fail' ? '' : '(optional)'}</label>
+                  <input className="form-control" value={form.defectId} onChange={e => setForm(f => ({ ...f, defectId: e.target.value }))} placeholder="BUG-123 or JIRA-456" />
                 </div>
                 <div className="form-group">
                   <label>Defect Description</label>
-                  <textarea className="form-control" value={form.defectDescription} onChange={e => setForm(f => ({ ...f, defectDescription: e.target.value }))} />
+                  <textarea className="form-control" value={form.defectDescription} onChange={e => setForm(f => ({ ...f, defectDescription: e.target.value }))}
+                    placeholder="Detailed description of the defect..." />
                 </div>
               </>
             )}
+
             <div className="modal-footer" style={{ padding: 0, marginTop: 16 }}>
               <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Record Result'}</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Saving...' : `Record as ${meta.label}`}
+              </button>
             </div>
           </form>
         </div>
       </div>
+    </div>
+  );
+};
+
+const ExecutionHistory = ({ executions }) => {
+  const [expanded, setExpanded] = useState(null);
+
+  const STATUS_ICONS = { pass: '✅', fail: '❌', blocked: '🚫', skipped: '⏭', pending: '⏳' };
+
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Execution History ({executions?.length || 0})</h3>
+      {!executions?.length ? (
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No executions yet</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {executions.map((e, idx) => (
+            <div key={e.id} style={{ borderBottom: idx < executions.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              {/* Summary row — clickable */}
+              <div
+                onClick={() => setExpanded(ex => ex === e.id ? null : e.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', cursor: 'pointer', borderRadius: 4 }}
+                onMouseEnter={el => el.currentTarget.style.background = 'var(--bg-secondary)'}
+                onMouseLeave={el => el.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{STATUS_ICONS[e.status] || '●'}</span>
+                <span className={`badge badge-${e.status}`} style={{ flexShrink: 0 }}>{e.status.toUpperCase()}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{e.executed_by_name}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                  {new Date(e.executed_at).toLocaleString()}
+                </span>
+                {/* Comment preview */}
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {e.comments || <em>No reason recorded</em>}
+                </span>
+                {e.defect_id && (
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', flexShrink: 0 }}>🐛 {e.defect_id}</span>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                  {expanded === e.id ? '▲' : '▼'}
+                </span>
+              </div>
+
+              {/* Expanded detail */}
+              {expanded === e.id && (
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: 6, margin: '0 0 8px 0', padding: '12px 16px', fontSize: 13 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '6px 12px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Status:</span>
+                    <span><span className={`badge badge-${e.status}`}>{STATUS_ICONS[e.status]} {e.status.toUpperCase()}</span></span>
+
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Executed by:</span>
+                    <span>{e.executed_by_name}</span>
+
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Date & Time:</span>
+                    <span>{new Date(e.executed_at).toLocaleString()}</span>
+
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Reason / Comment:</span>
+                    <span style={{ whiteSpace: 'pre-wrap' }}>{e.comments || <em style={{ color: 'var(--text-secondary)' }}>No reason recorded</em>}</span>
+
+                    {e.defect_id && <>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Defect ID:</span>
+                      <span style={{ color: 'var(--danger)', fontWeight: 600 }}>🐛 {e.defect_id}</span>
+                    </>}
+
+                    {e.defect_description && <>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Defect Detail:</span>
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{e.defect_description}</span>
+                    </>}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -310,27 +414,7 @@ const TestCaseDetail = () => {
       )}
 
       {/* Execution History */}
-      <div className="card">
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Execution History</h3>
-        {tc.executions?.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No executions yet</p>
-        ) : (
-          <table className="table">
-            <thead><tr><th>Status</th><th>Executed By</th><th>Date</th><th>Comments</th><th>Defect</th></tr></thead>
-            <tbody>
-              {tc.executions?.map(e => (
-                <tr key={e.id}>
-                  <td><span className={`badge badge-${e.status}`}>{e.status}</span></td>
-                  <td>{e.executed_by_name}</td>
-                  <td>{new Date(e.executed_at).toLocaleString()}</td>
-                  <td style={{ fontSize: 12 }}>{e.comments}</td>
-                  <td style={{ fontSize: 12 }}>{e.defect_id ? <span style={{ color: 'var(--danger)' }}>{e.defect_id}</span> : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <ExecutionHistory executions={tc.executions} />
 
       <CommentsSection projectId={projectId} caseId={caseId} />
       <VersionHistory projectId={projectId} caseId={caseId} onRestore={load} />

@@ -69,12 +69,16 @@ const SuiteDetail = ({ suite, projectId, onClose }) => {
   }, [projectId, suite.id, loadDetail]);
 
   const executeAll = async () => {
-    if (!window.confirm('Execute all test cases in this suite?')) return;
+    const reason = window.prompt(
+      `Execute all ${detail.test_cases.length} test case(s) in "${suite.name}" as PASS?\n\nEnter a reason (required):`
+    );
+    if (reason === null) return; // cancelled
+    if (!reason.trim()) { alert('A reason is required to record batch execution.'); return; }
     setExecuting(true);
-    const results = detail.test_cases.map(tc => ({ testCaseId: tc.id, status: 'pass', comments: 'Batch execution' }));
+    const results = detail.test_cases.map(tc => ({ testCaseId: tc.id, status: 'pass', comments: reason.trim() }));
     try {
       await api.post(`/projects/${projectId}/executions/suite`, { suiteId: suite.id, results });
-      alert('Suite executed successfully!');
+      alert(`Suite executed: ${results.length} test case(s) marked as PASS.`);
     } finally {
       setExecuting(false);
     }

@@ -49,13 +49,24 @@ const SuiteModal = ({ suite, projectId, onClose, onSave }) => {
 
 const SuiteDetail = ({ suite, projectId, onClose }) => {
   const [detail, setDetail] = useState(null);
+  const [allCases, setAllCases] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { canExecute } = useAuth();
+  const { canWrite, canExecute } = useAuth();
   const [executing, setExecuting] = useState(false);
+  const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const loadDetail = useCallback(() => {
+    return api.get(`/projects/${projectId}/suites/${suite.id}`).then(r => setDetail(r.data));
+  }, [projectId, suite.id]);
 
   useEffect(() => {
-    api.get(`/projects/${projectId}/suites/${suite.id}`).then(r => setDetail(r.data)).finally(() => setLoading(false));
-  }, [suite.id, projectId]);
+    Promise.all([
+      loadDetail(),
+      api.get(`/projects/${projectId}/testcases?limit=200`).then(r => setAllCases(r.data.data || [])),
+    ]).finally(() => setLoading(false));
+  }, [projectId, suite.id, loadDetail]);
 
   const executeAll = async () => {
     if (!window.confirm('Execute all test cases in this suite?')) return;
@@ -69,9 +80,32 @@ const SuiteDetail = ({ suite, projectId, onClose }) => {
     }
   };
 
+  const addCase = async () => {
+    if (!selectedCaseId) return;
+    setAdding(true);
+    try {
+      await api.post(`/projects/${projectId}/suites/${suite.id}/cases`, { testCaseId: selectedCaseId });
+      setSelectedCaseId('');
+      await loadDetail();
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const removeCase = async (caseId) => {
+    await api.delete(`/projects/${projectId}/suites/${suite.id}/cases/${caseId}`);
+    await loadDetail();
+  };
+
+  // Test cases not yet in this suite, filtered by search
+  const suiteIds = new Set((detail?.test_cases || []).map(tc => tc.id));
+  const available = allCases
+    .filter(tc => !suiteIds.has(tc.id))
+    .filter(tc => !search || tc.title.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: 720 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{suite.name}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
@@ -79,23 +113,91 @@ const SuiteDetail = ({ suite, projectId, onClose }) => {
         <div className="modal-body">
           {loading ? <LoadingSpinner /> : (
             <>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>{suite.description}</p>
-              {canExecute() && detail?.test_cases?.length > 0 && (
-                <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={executeAll} disabled={executing}>
-                  {executing ? 'Executing...' : '▶ Execute All'}
-                </button>
+              {suite.description && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>{suite.description}</p>
               )}
+
+              {/* Add test case row — admin/test-lead only */}
+              {canWrite() && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    className="form-control"
+                    placeholder="Search test cases to add..."
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setSelectedCaseId(''); }}
+                    style={{ flex: 1, minWidth: 180 }}
+                  />
+                  <select
+                    className="select"
+                    value={selectedCaseId}
+                    onChange={e => setSelectedCaseId(e.target.value)}
+                    style={{ flex: 2, minWidth: 200 }}
+                  >
+                    <option value="">-- Select test case --</option>
+                    {available.map(tc => (
+                      <option key={tc.id} value={tc.id}>
+                        [{tc.priority}] {tc.title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-primary"
+                    onClick={addCase}
+                    disabled={adding || !selectedCaseId}
+                  >
+                    {adding ? 'Adding...' : '+ Add'}
+                  </button>
+                </div>
+              )}
+
+              {/* Existing test cases in suite */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <strong style={{ fontSize: 13 }}>
+                  Test Cases in Suite ({detail?.test_cases?.length || 0})
+                </strong>
+                {canExecute() && detail?.test_cases?.length > 0 && (
+                  <button className="btn btn-primary btn-sm" onClick={executeAll} disabled={executing}>
+                    {executing ? 'Executing...' : '▶ Execute All'}
+                  </button>
+                )}
+              </div>
+
               {detail?.test_cases?.length === 0 ? (
-                <div className="empty-state"><p>No test cases in this suite</p></div>
+                <div className="empty-state" style={{ padding: 24 }}>
+                  <p style={{ marginBottom: 4 }}>No test cases in this suite yet.</p>
+                  {canWrite() && <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Use the dropdown above to add test cases.</p>}
+                </div>
               ) : (
                 <table className="table">
-                  <thead><tr><th>Title</th><th>Priority</th><th>Type</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Priority</th>
+                      <th>Type</th>
+                      {canWrite() && <th style={{ width: 70 }}></th>}
+                    </tr>
+                  </thead>
                   <tbody>
                     {detail?.test_cases?.map(tc => (
                       <tr key={tc.id}>
-                        <td><Link to={`/projects/${projectId}/testcases/${tc.id}`} onClick={onClose}>{tc.title}</Link></td>
+                        <td>
+                          <Link to={`/projects/${projectId}/testcases/${tc.id}`} onClick={onClose}>
+                            {tc.title}
+                          </Link>
+                        </td>
                         <td><span className={`badge badge-${tc.priority}`}>{tc.priority}</span></td>
-                        <td>{tc.type}</td>
+                        <td style={{ fontSize: 12 }}>{tc.type}</td>
+                        {canWrite() && (
+                          <td>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => removeCase(tc.id)}
+                              title="Remove from suite"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -26,7 +26,7 @@ const executionLimiter = rateLimit({
 
 const analyticsLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 50,
+  max: 500,
   message: { message: 'Analytics rate limit exceeded' },
   standardHeaders: true,
   legacyHeaders: false,

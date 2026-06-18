@@ -22,7 +22,7 @@ const Dashboard = () => {
 
         const sData = {};
         const tData = {};
-        await Promise.all(pRes.data.slice(0, 3).map(async (p) => {
+        await Promise.all(pRes.data.slice(0, 5).map(async (p) => {
           try {
             const [s, t] = await Promise.all([
               api.get(`/projects/${p.id}/analytics/summary`),
@@ -30,7 +30,9 @@ const Dashboard = () => {
             ]);
             sData[p.id] = s.data;
             tData[p.id] = t.data.data;
-          } catch {}
+          } catch (err) {
+            console.warn(`Analytics failed for project ${p.id}:`, err.response?.status, err.response?.data?.message || err.message);
+          }
         }));
         setSummaries(sData);
         setTrends(tData);
@@ -43,18 +45,23 @@ const Dashboard = () => {
 
   const globalStats = useMemo(() => {
     const totals = { pass: 0, fail: 0, blocked: 0, skipped: 0, pending: 0, total: 0 };
+    // Use test_case_count from projects list (always available, no analytics needed)
+    projects.forEach(p => { totals.total += parseInt(p.test_case_count) || 0; });
     Object.values(summaries).forEach(s => {
-      Object.keys(totals).forEach(k => {
-        if (k === 'total') totals.total += s.totalTestCases || 0;
-        else totals[k] += s.executionSummary?.[k] || 0;
+      ['pass', 'fail', 'blocked', 'skipped', 'pending'].forEach(k => {
+        totals[k] += s.executionSummary?.[k] || 0;
       });
     });
     return totals;
-  }, [summaries]);
+  }, [summaries, projects]);
 
   const pieData = useMemo(() => {
-    const s = Object.values(summaries)[0]?.executionSummary || {};
-    return Object.entries(s).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
+    // Aggregate execution counts across ALL projects
+    const agg = { pass: 0, fail: 0, blocked: 0, skipped: 0, pending: 0 };
+    Object.values(summaries).forEach(s => {
+      Object.entries(s.executionSummary || {}).forEach(([k, v]) => { agg[k] = (agg[k] || 0) + v; });
+    });
+    return Object.entries(agg).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
   }, [summaries]);
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." />;

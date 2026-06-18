@@ -161,12 +161,22 @@ const TestCases = () => {
 
   const totalPages = Math.ceil(total / limit);
 
-  const handleExport = (format) => {
-    const url = `/api/projects/${projectId}/testcases/export/${format}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `test-cases.${format === 'csv' ? 'csv' : 'xlsx'}`;
-    a.click();
+  const handleExport = async (format) => {
+    try {
+      const res = await api.get(`/projects/${projectId}/testcases/export/${format}`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = format === 'csv' ? 'test-cases.csv' : 'test-cases.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Export failed: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleImport = async (e) => {

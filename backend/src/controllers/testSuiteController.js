@@ -35,15 +35,28 @@ const getSuite = async (req, res) => {
     if (suite.rows.length === 0) return res.status(404).json({ message: 'Suite not found' });
 
     const cases = await db.query(`
-      SELECT tc.*, u.username as created_by_name
+      SELECT tc.*, u.username as created_by_name,
+             COALESCE(
+               json_agg(
+                 json_build_object(
+                   'step_number', ts.step_number,
+                   'action', ts.action,
+                   'expected_result', ts.expected_result
+                 ) ORDER BY ts.step_number
+               ) FILTER (WHERE ts.id IS NOT NULL),
+               '[]'
+             ) as steps
       FROM test_cases tc
       JOIN test_suite_cases tsc ON tc.id = tsc.test_case_id
       LEFT JOIN users u ON tc.created_by = u.id
+      LEFT JOIN test_steps ts ON ts.test_case_id = tc.id
       WHERE tsc.suite_id = $1
+      GROUP BY tc.id, u.username
     `, [id]);
 
     res.json({ ...suite.rows[0], test_cases: cases.rows });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

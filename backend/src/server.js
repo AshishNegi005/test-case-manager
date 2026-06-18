@@ -10,6 +10,9 @@ const { getRedisClient } = require('./config/redis');
 
 const app = express();
 
+// Trust proxy — needed when running behind a reverse proxy or dev preview tunnel
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({

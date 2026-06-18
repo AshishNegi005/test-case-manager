@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import BackButton from '../components/common/BackButton';
 
 const PRIORITIES = ['', 'low', 'medium', 'high', 'critical'];
 const TYPES = ['', 'functional', 'integration', 'regression', 'smoke', 'ui', 'api'];
@@ -175,6 +176,7 @@ const TestCases = () => {
 
   return (
     <div>
+      <BackButton to={`/projects/${projectId}`} label="Back to Project" />
       <div className="page-header">
         <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>

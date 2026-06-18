@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import api from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import BackButton from '../components/common/BackButton';
 
 const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#6366f1', '#94a3b8'];
 const STATUS_COLORS = { pass: '#10b981', fail: '#ef4444', blocked: '#f59e0b', skipped: '#6366f1', pending: '#94a3b8' };
@@ -65,6 +66,7 @@ const Analytics = () => {
 
   return (
     <div>
+      <BackButton to={`/projects/${projectId}`} label="Back to Project" />
       <div className="page-header">
         <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>

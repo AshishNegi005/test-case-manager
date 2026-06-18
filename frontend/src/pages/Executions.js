@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import BackButton from '../components/common/BackButton';
 
 const Executions = () => {
   const { id: projectId } = useParams();
@@ -32,6 +33,7 @@ const Executions = () => {
 
   return (
     <div>
+      <BackButton to={`/projects/${projectId}`} label="Back to Project" />
       <div className="page-header">
         <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>

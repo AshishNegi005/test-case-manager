@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import BackButton from '../components/common/BackButton';
 
 const ROLE_COLORS = {
   'admin':     { bg: '#fee2e2', color: '#dc2626' },
@@ -84,6 +85,7 @@ const ProjectDetail = () => {
   return (
     <div>
       {/* Header */}
+      <BackButton to="/projects" label="Back to Projects" />
       <div className="page-header">
         <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>

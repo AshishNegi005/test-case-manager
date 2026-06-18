@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import BackButton from '../components/common/BackButton';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -32,6 +33,7 @@ const Users = () => {
 
   return (
     <div>
+      <BackButton to="/dashboard" label="Back to Dashboard" />
       <div className="page-header">
         <h1>User Management</h1>
       </div>

@@ -18,6 +18,8 @@ const TestSuites = lazy(() => import('./pages/TestSuites'));
 const Executions = lazy(() => import('./pages/Executions'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Users = lazy(() => import('./pages/Users'));
+const CiCd = lazy(() => import('./pages/CiCd'));
+const Schedules = lazy(() => import('./pages/Schedules'));
 
 const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
@@ -49,6 +51,8 @@ const AppRoutes = () => (
         <Route path="projects/:id/suites" element={<TestSuites />} />
         <Route path="projects/:id/executions" element={<Executions />} />
         <Route path="projects/:id/analytics" element={<Analytics />} />
+        <Route path="projects/:id/cicd" element={<CiCd />} />
+        <Route path="projects/:id/schedules" element={<Schedules />} />
         <Route path="users" element={<ProtectedRoute roles={['admin']}><Users /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

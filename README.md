@@ -1,132 +1,197 @@
-# Test Case Management System
+# Test Case Management System (TCM)
 
-A full-stack Test Case Management application built with React 18, Node.js, PostgreSQL, and Redis.
+A full-stack Test Case Management System built with **React 18**, **Node.js/Express**, **PostgreSQL**, and **Redis**.  
+Developed as a technical assignment for Tech-Bridge.
 
-## Tech Stack
-
-- **Frontend**: React 18, React Router v6, Recharts, Axios
-- **Backend**: Node.js, Express.js, JWT Auth
-- **Database**: PostgreSQL
-- **Caching**: Redis (15-60 min TTL per endpoint)
-- **API Docs**: Swagger/OpenAPI at `/api/docs`
-
-## Demo Credentials
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@demo.com | Test@1234 |
-| Test Lead | testlead@demo.com | Test@1234 |
-| Tester | tester@demo.com | Test@1234 |
-| Read Only | readonly@demo.com | Test@1234 |
+---
 
 ## Features
 
-- JWT-based authentication with RBAC (4 roles)
-- Project management with team members
-- Test case CRUD with steps, tags, priority, type
-- Test suite management + bulk execution
-- Test execution recording (Pass/Fail/Blocked/Skipped)
-- Defect tracking from failed tests
-- Analytics dashboard with 3 chart types (Pie, Line, Bar)
-- Redis caching with cache invalidation
-- Rate limiting per endpoint type
-- XSS & SQL injection prevention
-- Lazy loading with React.lazy + Suspense
-- Pagination for test case lists
-- Dark mode toggle
-- Swagger API documentation
+| Area | Details |
+|---|---|
+| **Authentication** | JWT-based login/register, 7-day token, bcrypt password hashing |
+| **RBAC** | 4 roles: `admin` › `test-lead` › `tester` › `read-only` |
+| **Projects** | Create/manage projects, assign team members with per-project roles |
+| **Test Cases** | Full CRUD, priority/type tags, bulk operations, step-by-step test steps |
+| **Export / Import** | Export test cases to **CSV** or **Excel (.xlsx)**; import from CSV/Excel |
+| **Test Suites** | Group test cases into suites, execute entire suite at once |
+| **Executions** | Record pass/fail/blocked/skipped results, track defects |
+| **Analytics** | Recharts dashboards: pie, line, bar — pass rates, trends, tester progress |
+| **Comments** | Collaborative comments on each test case (edit/delete your own) |
+| **Versioning** | Automatic version snapshot on every test case update; restore any version |
+| **Email Notifications** | Notifies assignees when a test case is assigned to them (nodemailer) |
+| **CI/CD Integration** | Generate API keys, trigger test suite runs via REST API, update results |
+| **Scheduling** | Cron-based scheduled test runs (node-cron), pause/resume/delete |
+| **Dark Mode** | Persistent theme toggle (CSS variables, localStorage) |
+| **Performance** | Redis caching, React.lazy code splitting, paginated queries, DB indexes |
+
+---
+
+## Tech Stack
+
+**Backend**
+- Node.js + Express
+- PostgreSQL (pg library, parameterized queries)
+- Redis (ioredis, optional — graceful fallback)
+- JWT authentication, bcryptjs, helmet, CORS
+- nodemailer, exceljs, node-cron, multer
+- Swagger UI at `/api/docs`
+
+**Frontend**
+- React 18 with React.lazy + Suspense
+- React Router v6, Axios
+- Recharts for analytics
+- CSS variables for theming (light/dark)
+
+---
+
+## Project Structure
+
+```
+TestCaseManager/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # DB, Redis, migration
+│   │   ├── controllers/     # Business logic
+│   │   ├── middleware/       # Auth, rate-limiting, validation
+│   │   ├── routes/          # Express routers
+│   │   ├── services/        # Email service
+│   │   └── server.js
+│   ├── .env.example
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── api/             # Axios client
+│   │   ├── components/      # Layout, LoadingSpinner, BackButton
+│   │   ├── context/         # AuthContext, ProjectContext, ThemeContext
+│   │   └── pages/           # All page components
+│   ├── .env.example
+│   └── package.json
+├── docker-compose.yml
+└── README.md
+```
+
+---
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL 14+
-- Redis 6+
+- Redis (optional)
 
-### Backend Setup
+### 1. Clone and install
+
+```bash
+git clone https://github.com/AshishNegi005/test-case-manager.git
+cd test-case-manager
+
+# Install backend dependencies
+cd backend && npm install
+
+# Install frontend dependencies
+cd ../frontend && npm install
+```
+
+### 2. Configure environment
+
+```bash
+# Backend
+cp backend/.env.example backend/.env
+# Edit backend/.env with your DB credentials and JWT secret
+
+# Frontend
+cp frontend/.env.example frontend/.env
+# No changes needed for local development
+```
+
+### 3. Set up database
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your DB credentials
-npm install
-npm run db:migrate
-npm run db:seed
-npm start
+npm run db:migrate    # Creates all 12 tables
+npm run db:seed       # Creates sample data + admin user
 ```
 
-### Frontend Setup
+Default admin credentials after seeding:
+- **Email:** `admin@tcm.local`
+- **Password:** `Admin@123`
+
+### 4. Run the application
 
 ```bash
-cd frontend
-npm install
-npm start
+# Terminal 1 - Backend
+cd backend && npm run dev
+
+# Terminal 2 - Frontend
+cd frontend && npm start
 ```
 
-App runs at http://localhost:3000, API at http://localhost:5000
+Open [http://localhost:3000](http://localhost:3000)
 
-### Docker Compose (Recommended)
+---
+
+## API Overview
+
+All authenticated endpoints require: `Authorization: Bearer <token>`
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login |
+| GET | `/api/projects` | List projects (role-filtered) |
+| POST | `/api/projects/:id/members` | Add team member |
+| GET | `/api/projects/:id/testcases` | List test cases (paginated) |
+| GET | `/api/projects/:id/testcases/export/csv` | Export as CSV |
+| GET | `/api/projects/:id/testcases/export/excel` | Export as Excel |
+| POST | `/api/projects/:id/testcases/import/csv` | Import from CSV |
+| GET | `/api/projects/:id/testcases/:caseId/comments` | Get comments |
+| GET | `/api/projects/:id/testcases/:caseId/versions` | Version history |
+| GET | `/api/projects/:id/api-keys` | List CI/CD API keys |
+| POST | `/api/ci/run` | Trigger suite run (API key auth) |
+| GET | `/api/projects/:id/schedules` | List cron schedules |
+
+Full interactive docs: [http://localhost:5001/api/docs](http://localhost:5001/api/docs)
+
+---
+
+## CI/CD Integration
+
+Generate an API key in the project's **CI/CD** tab, then use it in your pipeline:
+
+```yaml
+# GitHub Actions example
+- name: Trigger test suite
+  run: |
+    curl -X POST ${{ vars.TCM_URL }}/api/ci/run \
+      -H "X-API-Key: ${{ secrets.TCM_API_KEY }}" \
+      -H "Content-Type: application/json" \
+      -d '{"suiteId": "${{ vars.SMOKE_SUITE_ID }}"}'
+```
+
+---
+
+## Docker
 
 ```bash
-docker-compose up -d
+docker-compose up --build
 ```
 
-## Database Schema
+Services: `frontend` (port 3000), `backend` (port 5001), `postgres` (port 5432), `redis` (port 6379)
 
-```
-users           → id, username, email, password, role
-projects        → id, name, description, version, status, created_by
-project_members → project_id, user_id, role
-test_suites     → id, project_id, name, description, created_by
-test_cases      → id, project_id, title, description, priority, type, tags, ...
-test_steps      → id, test_case_id, step_number, action, expected_result
-test_suite_cases→ suite_id, test_case_id
-test_executions → id, test_case_id, project_id, executed_by, status, comments, ...
-```
+---
 
-## API Documentation
+## Security
 
-Swagger UI available at: http://localhost:5000/api/docs
+- Parameterized SQL queries (no injection)
+- XSS sanitization on all inputs
+- Rate limiting (auth: 20/15min, test cases: 100/hr)
+- Helmet security headers
+- Passwords: bcrypt with 12 salt rounds
+- API keys: stored as bcrypt hashes, only prefix exposed
 
-### Key Endpoints
+---
 
-| Method | Endpoint | Roles |
-|--------|----------|-------|
-| POST | /api/auth/login | Public |
-| GET | /api/projects | All |
-| POST | /api/projects | Admin, Test-Lead |
-| GET | /api/projects/:id/testcases | All |
-| POST | /api/projects/:id/testcases | Admin, Test-Lead |
-| POST | /api/projects/:id/executions | Admin, Test-Lead, Tester |
-| GET | /api/projects/:id/analytics/summary | All |
-| GET | /api/auth/users | Admin only |
+## License
 
-## RBAC Summary
-
-| Feature | Admin | Test-Lead | Tester | Read-Only |
-|---------|-------|-----------|--------|-----------|
-| View test cases | ✅ | ✅ | ✅ | ✅ |
-| Create/edit test cases | ✅ | ✅ | ❌ | ❌ |
-| Execute tests | ✅ | ✅ | ✅ | ❌ |
-| Manage projects | ✅ | ✅ | ❌ | ❌ |
-| Manage users | ✅ | ❌ | ❌ | ❌ |
-| View analytics | ✅ | ✅ | ✅ | ✅ |
-
-## Caching Strategy (Redis)
-
-| Data | TTL |
-|------|-----|
-| Analytics/summary | 15 min |
-| Test suite lists | 30 min |
-| Project metadata | 1 hour |
-
-Cache is invalidated on any write operation.
-
-## Rate Limits
-
-| Endpoint | Limit |
-|----------|-------|
-| Auth endpoints | 5 req / 15 min |
-| Test case CRUD | 100 req / hour |
-| Test executions | 200 req / hour |
-| Analytics | 50 req / hour |
+MIT

@@ -1,5 +1,7 @@
 const db = require('../config/database');
 const { cache } = require('../config/redis');
+const { saveVersion } = require('./versionController');
+const { notifyTestAssignment } = require('../services/emailService');
 
 const getTestCases = async (req, res) => {
   try {
@@ -96,14 +98,20 @@ const createTestCase = async (req, res) => {
 const updateTestCase = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, priority, type, preconditions, postconditions, tags, steps, assignedTo } = req.body;
+    const { title, description, priority, type, preconditions, postconditions, tags, steps, assignedTo, changeReason } = req.body;
+
+    // Fetch current state before update for versioning + email diff
+    const current = await db.query('SELECT * FROM test_cases WHERE id=$1', [id]);
+    if (!current.rows.length) return res.status(404).json({ message: 'Not found' });
+    const prev = current.rows[0];
+
+    // Save version snapshot of current state before overwriting
+    await saveVersion(id, req.user.id, changeReason || 'Updated');
 
     const result = await db.query(`
       UPDATE test_cases SET title=$1, description=$2, priority=$3, type=$4, preconditions=$5,
       postconditions=$6, tags=$7, assigned_to=$8, updated_at=NOW() WHERE id=$9 RETURNING *
     `, [title, description, priority, type, preconditions, postconditions, tags, assignedTo || null, id]);
-
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Not found' });
 
     if (steps) {
       await db.query('DELETE FROM test_steps WHERE test_case_id=$1', [id]);
@@ -114,9 +122,30 @@ const updateTestCase = async (req, res) => {
     }
 
     const tc = result.rows[0];
+
+    // Email notification: assignment changed
+    if (assignedTo && assignedTo !== prev.assigned_to) {
+      try {
+        const assigneeRes = await db.query('SELECT username, email FROM users WHERE id=$1', [assignedTo]);
+        const projRes = await db.query('SELECT name FROM projects WHERE id=$1', [tc.project_id]);
+        if (assigneeRes.rows.length) {
+          await notifyTestAssignment({
+            assigneeEmail: assigneeRes.rows[0].email,
+            assigneeName: assigneeRes.rows[0].username,
+            testCaseTitle: tc.title,
+            projectName: projRes.rows[0]?.name || 'Unknown project',
+            assignerName: req.user.username,
+          });
+        }
+      } catch (emailErr) {
+        console.warn('[Email] notification failed:', emailErr.message);
+      }
+    }
+
     await cache.delPattern(`analytics:${tc.project_id}:*`);
     res.json(tc);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

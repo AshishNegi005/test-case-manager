@@ -76,10 +76,12 @@ const ProjectDetail = () => {
   const availableUsers = allUsers.filter(u => !memberIds.has(u.id));
 
   const navCards = [
-    { to: `/projects/${id}/testcases`, icon: '📋', label: 'Test Cases',   color: '#6366f1' },
-    { to: `/projects/${id}/suites`,    icon: '📦', label: 'Test Suites',  color: '#10b981' },
-    { to: `/projects/${id}/executions`,icon: '▶️', label: 'Executions',   color: '#f59e0b' },
-    { to: `/projects/${id}/analytics`, icon: '📊', label: 'Analytics',    color: '#ef4444' },
+    { to: `/projects/${id}/testcases`,  icon: '📋', label: 'Test Cases',   color: '#6366f1' },
+    { to: `/projects/${id}/suites`,     icon: '📦', label: 'Test Suites',  color: '#10b981' },
+    { to: `/projects/${id}/executions`, icon: '▶️', label: 'Executions',   color: '#f59e0b' },
+    { to: `/projects/${id}/analytics`,  icon: '📊', label: 'Analytics',    color: '#ef4444' },
+    { to: `/projects/${id}/schedules`,  icon: '🕐', label: 'Schedules',    color: '#8b5cf6' },
+    { to: `/projects/${id}/cicd`,       icon: '🔗', label: 'CI/CD',        color: '#0ea5e9' },
   ];
 
   return (
@@ -102,7 +104,7 @@ const ProjectDetail = () => {
       </div>
 
       {/* Nav cards */}
-      <div className="grid grid-4" style={{ marginBottom: 24 }}>
+      <div className="grid grid-3" style={{ marginBottom: 24 }}>
         {navCards.map(c => (
           <Link key={c.to} to={c.to} style={{ textDecoration: 'none' }}>
             <div className="card" style={{ textAlign: 'center', cursor: 'pointer', borderTop: `3px solid ${c.color}`, transition: 'transform 0.15s' }}

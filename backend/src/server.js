@@ -7,6 +7,8 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger/config');
 const { getRedisClient } = require('./config/redis');
+const { initScheduler } = require('./controllers/scheduleController');
+const { authenticateApiKey, ciTriggerRun, ciUpdateResult } = require('./controllers/apiKeyController');
 
 const app = express();
 
@@ -36,6 +38,12 @@ app.use('/api/projects/:projectId/testcases', require('./routes/testCases'));
 app.use('/api/projects/:projectId/suites', require('./routes/testSuites'));
 app.use('/api/projects/:projectId/executions', require('./routes/executions'));
 app.use('/api/projects/:projectId/analytics', require('./routes/analytics'));
+app.use('/api/projects/:projectId/api-keys', require('./routes/apiKeys'));
+app.use('/api/projects/:projectId/schedules', require('./routes/schedules'));
+
+// CI/CD public endpoints (authenticated via API key, not JWT)
+app.post('/api/ci/run', authenticateApiKey, ciTriggerRun);
+app.patch('/api/ci/executions/:executionId', authenticateApiKey, ciUpdateResult);
 
 // Health check
 app.get('/health', async (req, res) => {
@@ -61,4 +69,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  initScheduler();
+});

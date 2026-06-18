@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -124,6 +124,8 @@ const TestCases = () => {
   const [showModal, setShowModal] = useState(false);
   const [editCase, setEditCase] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const importRef = useRef();
 
   const limit = 15;
 
@@ -159,6 +161,35 @@ const TestCases = () => {
 
   const totalPages = Math.ceil(total / limit);
 
+  const handleExport = (format) => {
+    const url = `/api/projects/${projectId}/testcases/export/${format}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `test-cases.${format === 'csv' ? 'csv' : 'xlsx'}`;
+    a.click();
+  };
+
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const format = file.name.endsWith('.xlsx') ? 'excel' : 'csv';
+    try {
+      const res = await api.post(`/projects/${projectId}/testcases/import/${format}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert(`${res.data.message}${res.data.errors?.length ? '\n\nErrors:\n' + res.data.errors.join('\n') : ''}`);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Import failed');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
+
   const filterBar = useMemo(() => (
     <div className="search-bar">
       <input className="form-control" placeholder="Search test cases..." value={filters.search}
@@ -184,12 +215,20 @@ const TestCases = () => {
           </div>
           <h1>Test Cases <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>({total})</span></h1>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {selected.length > 0 && canWrite() && (
             <button className="btn btn-danger" onClick={handleBulkDelete}>Delete ({selected.length})</button>
           )}
+          <button className="btn btn-secondary" onClick={() => handleExport('csv')} title="Export CSV">⬇ CSV</button>
+          <button className="btn btn-secondary" onClick={() => handleExport('excel')} title="Export Excel">⬇ Excel</button>
           {canWrite() && (
-            <button className="btn btn-primary" onClick={() => { setEditCase(null); setShowModal(true); }}>+ New Test Case</button>
+            <>
+              <input ref={importRef} type="file" accept=".csv,.xlsx" style={{ display: 'none' }} onChange={handleImport} />
+              <button className="btn btn-secondary" onClick={() => importRef.current.click()} disabled={importing} title="Import CSV/Excel">
+                {importing ? 'Importing...' : '⬆ Import'}
+              </button>
+              <button className="btn btn-primary" onClick={() => { setEditCase(null); setShowModal(true); }}>+ New Test Case</button>
+            </>
           )}
         </div>
       </div>

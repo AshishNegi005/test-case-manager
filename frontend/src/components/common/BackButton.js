@@ -1,25 +1,20 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const BackButton = ({ to, label }) => {
+const BackButton = ({ to }) => {
   const navigate = useNavigate();
-
-  const handleClick = () => {
-    if (to) navigate(to);
-    else navigate(-1);
-  };
 
   return (
     <button
-      onClick={handleClick}
+      onClick={() => to ? navigate(to) : navigate(-1)}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        background: 'none',
+        gap: 5,
+        background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
         borderRadius: 6,
-        padding: '6px 12px',
+        padding: '5px 12px',
         fontSize: 13,
         fontWeight: 500,
         color: 'var(--text-secondary)',
@@ -28,15 +23,18 @@ const BackButton = ({ to, label }) => {
         transition: 'all 0.15s',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = 'var(--bg-secondary)';
+        e.currentTarget.style.background = 'var(--border)';
         e.currentTarget.style.color = 'var(--text-primary)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'none';
+        e.currentTarget.style.background = 'var(--bg-secondary)';
         e.currentTarget.style.color = 'var(--text-secondary)';
       }}
     >
-      ← {label || 'Back'}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back
     </button>
   );
 };

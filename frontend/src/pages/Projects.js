@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
+import RightDrawer from '../components/common/RightDrawer';
 
-const ProjectModal = ({ project, onClose, onSave }) => {
+const ProjectForm = ({ project, onClose, onSave }) => {
   const [form, setForm] = useState(project || { name: '', description: '', version: '', status: 'active' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,45 +25,33 @@ const ProjectModal = ({ project, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{project ? 'Edit Project' : 'New Project'}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
-        </div>
-        <div className="modal-body">
-          {error && <div className="alert alert-error">{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Project Name *</label>
-              <input className="form-control" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
-            </div>
-            <div className="form-group">
-              <label>Description</label>
-              <textarea className="form-control" value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
-            <div className="grid grid-2">
-              <div className="form-group">
-                <label>Version</label>
-                <input className="form-control" value={form.version || ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))} placeholder="v1.0.0" />
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select className="select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-            </div>
-            <div className="modal-footer" style={{ padding: 0, marginTop: 16 }}>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-            </div>
-          </form>
-        </div>
+    <form onSubmit={handleSubmit}>
+      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+      <div className="form-group">
+        <label>Project Name *</label>
+        <input className="form-control" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
       </div>
-    </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea className="form-control" rows={3} value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+      </div>
+      <div className="form-group">
+        <label>Version</label>
+        <input className="form-control" value={form.version || ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))} placeholder="v1.0.0" />
+      </div>
+      <div className="form-group">
+        <label>Status</label>
+        <select className="select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save Project'}</button>
+      </div>
+    </form>
   );
 };
 
@@ -132,9 +121,14 @@ const Projects = () => {
         </div>
       )}
 
-      {showModal && (
-        <ProjectModal project={editProject} onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load(); }} />
-      )}
+      <RightDrawer
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editProject ? 'Edit Project' : 'New Project'}
+        subtitle={editProject ? `Editing: ${editProject.name}` : 'Fill in the details to create a new project'}
+      >
+        <ProjectForm project={editProject} onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load(); }} />
+      </RightDrawer>
     </div>
   );
 };

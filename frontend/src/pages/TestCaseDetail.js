@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import BackButton from '../components/common/BackButton';
+import RightDrawer from '../components/common/RightDrawer';
 
 // ---------- Comments Section ----------
 const CommentsSection = ({ projectId, caseId }) => {
@@ -161,7 +162,7 @@ const STATUS_LABELS = {
   skipped: { icon: '⏭', label: 'Skipped', commentLabel: 'Skip Reason',    placeholder: 'Why was this test skipped?' },
 };
 
-const ExecuteModal = ({ testCase, projectId, onClose, onSave }) => {
+const ExecuteForm = ({ testCase, projectId, onClose, onSave }) => {
   const [form, setForm] = useState({ status: 'pass', comments: '', defectId: '', defectDescription: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -182,67 +183,57 @@ const ExecuteModal = ({ testCase, projectId, onClose, onSave }) => {
   const meta = STATUS_LABELS[form.status];
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Execute: {testCase.title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
-        </div>
-        <div className="modal-body">
-          {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Result *</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {Object.entries(STATUS_LABELS).map(([s, m]) => (
-                  <button key={s} type="button"
-                    className={`btn ${form.status === s ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => { setForm(f => ({ ...f, status: s })); setError(''); }}>
-                    {m.icon} {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>{meta.commentLabel} *</label>
-              <textarea
-                className="form-control"
-                rows={3}
-                value={form.comments}
-                onChange={e => setForm(f => ({ ...f, comments: e.target.value }))}
-                placeholder={meta.placeholder}
-                style={{ borderColor: error && !form.comments.trim() ? 'var(--danger)' : undefined }}
-              />
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-                Required — this will appear in the execution history so the team knows why it {form.status}ed.
-              </div>
-            </div>
-
-            {(form.status === 'fail' || form.status === 'blocked') && (
-              <>
-                <div className="form-group">
-                  <label>Defect ID {form.status === 'fail' ? '' : '(optional)'}</label>
-                  <input className="form-control" value={form.defectId} onChange={e => setForm(f => ({ ...f, defectId: e.target.value }))} placeholder="BUG-123 or JIRA-456" />
-                </div>
-                <div className="form-group">
-                  <label>Defect Description</label>
-                  <textarea className="form-control" value={form.defectDescription} onChange={e => setForm(f => ({ ...f, defectDescription: e.target.value }))}
-                    placeholder="Detailed description of the defect..." />
-                </div>
-              </>
-            )}
-
-            <div className="modal-footer" style={{ padding: 0, marginTop: 16 }}>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : `Record as ${meta.label}`}
-              </button>
-            </div>
-          </form>
+    <form onSubmit={handleSubmit}>
+      {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+      <div className="form-group">
+        <label>Result *</label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {Object.entries(STATUS_LABELS).map(([s, m]) => (
+            <button key={s} type="button"
+              className={`btn ${form.status === s ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setForm(f => ({ ...f, status: s })); setError(''); }}>
+              {m.icon} {m.label}
+            </button>
+          ))}
         </div>
       </div>
-    </div>
+
+      <div className="form-group">
+        <label>{meta.commentLabel} *</label>
+        <textarea
+          className="form-control"
+          rows={3}
+          value={form.comments}
+          onChange={e => setForm(f => ({ ...f, comments: e.target.value }))}
+          placeholder={meta.placeholder}
+          style={{ borderColor: error && !form.comments.trim() ? 'var(--danger)' : undefined }}
+        />
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+          Required — this will appear in the execution history so the team knows why it {form.status}ed.
+        </div>
+      </div>
+
+      {(form.status === 'fail' || form.status === 'blocked') && (
+        <>
+          <div className="form-group">
+            <label>Defect ID {form.status === 'fail' ? '' : '(optional)'}</label>
+            <input className="form-control" value={form.defectId} onChange={e => setForm(f => ({ ...f, defectId: e.target.value }))} placeholder="BUG-123 or JIRA-456" />
+          </div>
+          <div className="form-group">
+            <label>Defect Description</label>
+            <textarea className="form-control" value={form.defectDescription} onChange={e => setForm(f => ({ ...f, defectDescription: e.target.value }))}
+              placeholder="Detailed description of the defect..." />
+          </div>
+        </>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Saving...' : `Record as ${meta.label}`}
+        </button>
+      </div>
+    </form>
   );
 };
 
@@ -419,9 +410,14 @@ const TestCaseDetail = () => {
       <CommentsSection projectId={projectId} caseId={caseId} />
       <VersionHistory projectId={projectId} caseId={caseId} onRestore={load} />
 
-      {showExecute && (
-        <ExecuteModal testCase={tc} projectId={projectId} onClose={() => setShowExecute(false)} onSave={() => { setShowExecute(false); load(); }} />
-      )}
+      <RightDrawer
+        open={showExecute}
+        onClose={() => setShowExecute(false)}
+        title={`Execute: ${tc.title}`}
+        subtitle="Record the actual result for this test case"
+      >
+        <ExecuteForm testCase={tc} projectId={projectId} onClose={() => setShowExecute(false)} onSave={() => { setShowExecute(false); load(); }} />
+      </RightDrawer>
     </div>
   );
 };

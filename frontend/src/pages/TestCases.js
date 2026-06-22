@@ -4,11 +4,12 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import BackButton from '../components/common/BackButton';
+import RightDrawer from '../components/common/RightDrawer';
 
 const PRIORITIES = ['', 'low', 'medium', 'high', 'critical'];
 const TYPES = ['', 'functional', 'integration', 'regression', 'smoke', 'ui', 'api'];
 
-const TestCaseModal = ({ testCase, projectId, onClose, onSave }) => {
+const TestCaseForm = ({ testCase, projectId, onClose, onSave }) => {
   const [form, setForm] = useState(testCase || {
     title: '', description: '', priority: 'medium', type: 'functional',
     preconditions: '', postconditions: '', tags: '', steps: []
@@ -42,74 +43,67 @@ const TestCaseModal = ({ testCase, projectId, onClose, onSave }) => {
   const tagsStr = Array.isArray(form.tags) ? form.tags.join(', ') : (form.tags || '');
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{testCase ? 'Edit Test Case' : 'New Test Case'}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>×</button>
+    <form onSubmit={handleSubmit}>
+      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+      <div className="form-group">
+        <label>Title *</label>
+        <input className="form-control" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea className="form-control" rows={2} value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+      </div>
+      <div className="grid grid-2">
+        <div className="form-group">
+          <label>Priority</label>
+          <select className="select" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+            {PRIORITIES.slice(1).map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+          </select>
         </div>
-        <div className="modal-body">
-          {error && <div className="alert alert-error">{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Title *</label>
-              <input className="form-control" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
-            </div>
-            <div className="form-group">
-              <label>Description</label>
-              <textarea className="form-control" value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
-            <div className="grid grid-2">
-              <div className="form-group">
-                <label>Priority</label>
-                <select className="select" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
-                  {PRIORITIES.slice(1).map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Type</label>
-                <select className="select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                  {TYPES.slice(1).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Preconditions</label>
-              <textarea className="form-control" value={form.preconditions || ''} onChange={e => setForm(f => ({ ...f, preconditions: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label>Postconditions</label>
-              <textarea className="form-control" value={form.postconditions || ''} onChange={e => setForm(f => ({ ...f, postconditions: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label>Tags (comma separated)</label>
-              <input className="form-control" value={tagsStr} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="login, auth, smoke" />
-            </div>
-
-            {/* Test Steps */}
-            <div style={{ marginTop: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontWeight: 600, fontSize: 14 }}>Test Steps</label>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={addStep}>+ Add Step</button>
-              </div>
-              {(form.steps || []).map((step, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 12, padding: '10px 6px', color: 'var(--text-secondary)' }}>{i + 1}</span>
-                  <input className="form-control" placeholder="Action" value={step.action || ''} onChange={e => updateStep(i, 'action', e.target.value)} style={{ flex: 1 }} />
-                  <input className="form-control" placeholder="Expected Result" value={step.expected_result || ''} onChange={e => updateStep(i, 'expected_result', e.target.value)} style={{ flex: 1 }} />
-                  <button type="button" onClick={() => removeStep(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: '8px 4px' }}>×</button>
-                </div>
-              ))}
-            </div>
-
-            <div className="modal-footer" style={{ padding: 0, marginTop: 20 }}>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-            </div>
-          </form>
+        <div className="form-group">
+          <label>Type</label>
+          <select className="select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+            {TYPES.slice(1).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+          </select>
         </div>
       </div>
-    </div>
+      <div className="form-group">
+        <label>Preconditions</label>
+        <textarea className="form-control" rows={2} value={form.preconditions || ''} onChange={e => setForm(f => ({ ...f, preconditions: e.target.value }))} />
+      </div>
+      <div className="form-group">
+        <label>Postconditions</label>
+        <textarea className="form-control" rows={2} value={form.postconditions || ''} onChange={e => setForm(f => ({ ...f, postconditions: e.target.value }))} />
+      </div>
+      <div className="form-group">
+        <label>Tags (comma separated)</label>
+        <input className="form-control" value={tagsStr} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="login, auth, smoke" />
+      </div>
+
+      {/* Test Steps */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <label style={{ fontWeight: 600, fontSize: 14 }}>Test Steps</label>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={addStep}>+ Add Step</button>
+        </div>
+        {(form.steps || []).map((step, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 12, padding: '10px 6px', color: 'var(--text-secondary)', flexShrink: 0 }}>{i + 1}</span>
+            <input className="form-control" placeholder="Action" value={step.action || ''} onChange={e => updateStep(i, 'action', e.target.value)} style={{ flex: 1 }} />
+            <input className="form-control" placeholder="Expected Result" value={step.expected_result || ''} onChange={e => updateStep(i, 'expected_result', e.target.value)} style={{ flex: 1 }} />
+            <button type="button" onClick={() => removeStep(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: '8px 4px', flexShrink: 0 }}>×</button>
+          </div>
+        ))}
+        {(form.steps || []).length === 0 && (
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>No steps added yet. Click "+ Add Step" to add test steps.</p>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save Test Case'}</button>
+      </div>
+    </form>
   );
 };
 
@@ -292,9 +286,15 @@ const TestCases = () => {
         </div>
       )}
 
-      {showModal && (
-        <TestCaseModal testCase={editCase} projectId={projectId} onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load(); }} />
-      )}
+      <RightDrawer
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editCase ? 'Edit Test Case' : 'New Test Case'}
+        subtitle={editCase ? `Editing: ${editCase.title}` : 'Fill in the details below to create a new test case'}
+        width={620}
+      >
+        <TestCaseForm testCase={editCase} projectId={projectId} onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); load(); }} />
+      </RightDrawer>
     </div>
   );
 };

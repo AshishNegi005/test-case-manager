@@ -73,21 +73,67 @@ const Layout = () => {
           )}
         </nav>
 
-        {/* User info */}
-        <div style={{ padding: 16, borderTop: '1px solid var(--border)' }}>
-          {sidebarOpen && user && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{user.username}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{user.email}</div>
-              <span style={{
-                ...roleBadge[user.role],
-                padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-              }}>{user.role}</span>
+        {/* User info + Logout */}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '12px 12px 16px' }}>
+          {sidebarOpen && user ? (
+            <div>
+              {/* Avatar row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: 15,
+                }}>
+                  {user.username?.[0]?.toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.username}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.email}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role badge */}
+              <div style={{ marginBottom: 10 }}>
+                <span style={{
+                  ...roleBadge[user.role],
+                  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  display: 'inline-block',
+                }}>{user.role}</span>
+              </div>
+
+              {/* Logout button */}
+              <button onClick={handleLogout} style={{
+                width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid #fca5a5',
+                background: '#fff1f2', color: '#dc2626', fontWeight: 600, fontSize: 13,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                transition: 'background 0.15s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff1f2'}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
+              </button>
             </div>
+          ) : (
+            /* Collapsed sidebar — just icon */
+            <button onClick={handleLogout} title="Logout" style={{
+              width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid #fca5a5',
+              background: '#fff1f2', color: '#dc2626', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
           )}
-          <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
-            <span>🚪</span>{sidebarOpen && 'Logout'}
-          </button>
         </div>
       </aside>
 
